@@ -1,0 +1,37 @@
+﻿@using Umbraco.Core;
+@using Umbraco.Core.Models;
+@using Umbraco.Web;
+
+@functions
+{
+    public static List<IPublishedContent> FindAllRelatedContent(IPublishedContent source)
+    {
+        UmbracoHelper umbracoHelper = new UmbracoHelper(UmbracoContext.Current);
+        var list = new List<IPublishedContent>();
+        var isRootNode = umbracoHelper.TypedContentAtRoot().Any(tc => tc.Id == source.Id);
+        var languages = ApplicationContext.Current.Services.LocalizationService.GetAllLanguages().Where(l => l.IsoCode != source.GetCulture().Name);
+        var contents = umbracoHelper.
+                       TypedContentAtXPath("//" + source.DocumentTypeAlias).
+                       Where(c => 
+                            (
+                                isRootNode ||
+                                (
+                                    c.Parent.DocumentTypeAlias == source.Parent.DocumentTypeAlias   &&
+                                    c.SortOrder == source.SortOrder                                 &&
+                                    c.Level == source.Level
+                                )
+                            )
+                        );   
+        
+        foreach (var language in languages)
+        {
+            var content = contents.FirstOrDefault(c => c.GetCulture().Name == language.IsoCode);
+            if (content != null)
+            {
+                list.Add(content);
+            }
+        }
+        
+        return list;
+    }
+}
